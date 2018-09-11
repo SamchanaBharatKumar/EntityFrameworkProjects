@@ -1,0 +1,54 @@
+ Based on the project requirements created below four tables in our database.
+•	Users table
+•	Orders table
+•	Order items table
+•	Products table
+
+Commands to create tables:
+1.User table Query 
+      CREATE TABLE Users
+(
+    user ID INT IDENTITY (1, 1) NOT NULL,
+    role   INT NOT NULL,
+    password VARCHAR (100) NOT NULL,
+    mailID VARCHAR (100) NOT NULL,
+    contact VARCHAR (50) NOT NULL,
+    PRIMARY KEY CLUSTERED ([userID] ASC)
+);
+
+2. Orders table Query
+     CREATE TABLE Orders (
+    orderID INT IDENTITY (1, 1) NOT NULL,
+    userID INT NOT NULL,
+    ostatus VARCHAR (100) NOT NULL,
+    saddress VARCHAR (500) NOT NULL,
+    PRIMARY KEY CLUSTERED ([order ID] ASC),
+    FOREIGN KEY userID REFERENCES Users ([userID])
+);
+
+3.Order items table Query
+     CREATE TABLE OrderItem (
+    orderItemID INT           IDENTITY (1, 1) NOT NULL,
+    orderID     INT           NOT NULL,
+    productID   INT           NOT NULL,
+    quantity    INT           NOT NULL,
+    ostatus     VARCHAR (100) NOT NULL,
+    PRIMARY KEY CLUSTERED ([orderItemID] ASC),
+    FOREIGN KEY productID REFERENCES Products ([productID]),
+    FOREIGN KEY orderID REFERENCES Orders ([orderID])
+);
+
+4.Products table Query
+
+CREATE TABLE Products(
+    productID INT IDENTITY (1, 1) NOT NULL,
+    sku VARCHAR (100) NOT NULL,
+    barcode INT NOT NULL,
+    quantity INT NOT NULL,
+    pname VARCHAR (250) NOT NULL,
+    pweight FLOAT (53) NOT NULL,
+    pheight FLOAT (53)    NOT NULL,
+    PRIMARY KEY CLUSTERED ([productID] ASC)
+);
+
+ 
