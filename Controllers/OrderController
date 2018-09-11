@@ -1,0 +1,189 @@
+using OrderManagement.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+
+namespace OrderManagement.Controllers
+{
+    public class OrderController : ApiController
+    {
+        // GET: api/Order
+        public IEnumerable<string> Get()
+        {
+            return new string[] { "value1", "value2" };
+        }
+
+        // GET: api/Order/5
+        public List<KeyValuePair<string, string>> Get(int id)
+      {
+          List<KeyValuePair<string, string>> keyValuePairs = new List<KeyValuePair<string, string>>();
+         using (OMDBEntities dbEntity = new OMDBEntities())
+         {
+            IEnumerable<Order> orderList = dbEntity.Orders.Where(X => X.orderID == id);
+
+            //orders.orderID
+            foreach (Order order in orderList)
+            {
+               keyValuePairs.Add(new KeyValuePair<string, string>("OrderID", order.orderID.ToString()));
+               IEnumerable<OrderItem> itemsList = dbEntity.OrderItems.Where(b => b.orderID == order.orderID);
+               foreach (OrderItem item in itemsList)
+               {
+                  Product product = dbEntity.Products.SingleOrDefault(X => X.productID == item.productID);
+                  if (product != null)
+                  {
+                     keyValuePairs.Add(new KeyValuePair<string, string>("Product", product.pname));
+                     keyValuePairs.Add(new KeyValuePair<string, string>("Quantity", item.quantity.ToString()));
+                     keyValuePairs.Add(new KeyValuePair<string, string>("Status", item.ostatus));
+                  }
+               }
+            }
+         }
+         return keyValuePairs;
+      }
+
+      // POST: api/Order
+      public HttpResponseMessage Post([FromBody]SingleOrderDetails value)
+      {
+         HttpResponseMessage response = new HttpResponseMessage(HttpStatusCode.Accepted);
+         try
+         {
+            if (ModelState.IsValid)
+            {
+               User user = null;
+               IList<OrderItem> items = new List<OrderItem>();
+               using (OMDBEntities entity = new OMDBEntities())
+               {
+                  user = entity.Users.FirstOrDefault(X => X.userID == value.UserID);
+                  if (user == null)
+                  {
+                     return Request.CreateResponse(HttpStatusCode.ExpectationFailed, " User not found");
+                  }
+
+                  foreach (int productID in value.ProductQuantityMapping.Keys)
+                  {
+                     Product product = entity.Products.FirstOrDefault(X => X.productID == productID);
+                     if (product == null)
+                     {
+                        return Request.CreateResponse(HttpStatusCode.ExpectationFailed, " Product not found");
+                     }
+
+                     if (product.quantity < value.ProductQuantityMapping[productID])
+                     {
+                        return Request.CreateResponse(HttpStatusCode.ExpectationFailed, " Order more number of products than available");
+                     }
+                     OrderItem orderItem = new OrderItem();
+                     orderItem.ostatus = "Placed";
+                     orderItem.productID = productID;
+                     orderItem.Product = product;
+                     orderItem.quantity = value.ProductQuantityMapping[productID];
+                     items.Add(orderItem);
+                  }
+
+                  Order order = new Order();
+                  order.ostatus = "Placed";
+                  order.saddress = value.Address;
+                  order.User = user;
+                  order.userID = user.userID;
+                  //order.OrderItems
+                  entity.Orders.Add(order);
+                  entity.SaveChanges();
+
+                  foreach(OrderItem orderItem in items)
+                  {
+                     orderItem.orderID = order.orderID;
+                     orderItem.Order = order;
+                     entity.OrderItems.Add(orderItem);
+                  }
+                  entity.SaveChanges();
+
+                  
+                  
+               }
+            }
+         }
+         catch (Exception ex)
+         {
+            return Request.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+         }
+         
+         return response;
+      }
+
+      // PUT: api/Order/5
+      public HttpResponseMessage Put(int id, [FromBody]OrderUpdateModel value)
+        {
+         HttpResponseMessage response = new HttpResponseMessage(HttpStatusCode.Accepted);
+         try
+         {
+            if (ModelState.IsValid)
+            {
+               using (OMDBEntities dbEntity = new OMDBEntities())
+               {
+                  Order order = dbEntity.Orders.FirstOrDefault(X => X.orderID == id);
+                  if(order != null)
+                  {
+                     order.ostatus = value.Status;
+                     order.saddress = value.Address;
+                     if(value.OrderItemModels != null)
+                     {
+                        foreach (OrderItemModel itemModel in value.OrderItemModels)
+                        {
+                           OrderItem orderItem = dbEntity.OrderItems.FirstOrDefault(X => X.orderID == id && X.productID == itemModel.ProductID);
+                           if(orderItem != null)
+                           {
+                              orderItem.quantity = itemModel.Quantity;
+                              orderItem.ostatus = itemModel.status;
+                           }
+                        }
+                     }
+                     dbEntity.SaveChanges();
+                  }
+               }
+                  return Request.CreateResponse(HttpStatusCode.OK);
+            }
+            else
+            {
+               return Request.CreateResponse(HttpStatusCode.InternalServerError, "Invalid Model");
+            }
+         }
+         catch (Exception ex)
+         {
+            return Request.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+         }
+      }
+
+        // DELETE: api/Order/5
+        public HttpResponseMessage Delete(int id)
+        {
+        try{
+            if (ModelState.IsValid)
+            {
+               using (OMDBEntities dbEntity = new OMDBEntities())
+               {
+                  Order order = dbEntity.Orders.FirstOrDefault(X => X.orderID == id);
+                  if (order != null)
+                  {
+                     dbEntity.Orders.Remove(order);
+                  }
+                  IEnumerable<OrderItem> itemsList = dbEntity.OrderItems.Where(b => b.orderID == id);
+                  dbEntity.OrderItems.RemoveRange(itemsList);
+                  dbEntity.SaveChanges();
+                  return Request.CreateResponse(HttpStatusCode.OK);
+               }
+            }
+            else
+            {
+               return Request.CreateResponse(HttpStatusCode.InternalServerError, "Invalid Model");
+            }
+         }
+        catch(Exception ex)
+        {
+            return Request.CreateResponse(HttpStatusCode.InternalServerError, ex.Message);
+         }
+         
+      }
+    }
+}
